@@ -17,9 +17,9 @@ def str_to_bin(str):
 
 def chr_to_bin(c):
     binary = bin(ord(c))[2:]
-    if len(binary)<8:
-        for _ in range(8-len(binary)):
-            binary = '0'+binary
+    if len(binary) < 8:
+        pre = ''.join('0' for _ in range(8-len(binary)))
+        binary = pre+binary
     return binary
 
 def bin_to_str(binary):
@@ -42,19 +42,18 @@ def modify_pixel(px,_6bits):
     return map_tuple(bin_to_dec,(r,g,b))
 
 
-im = Image.open('test.png')
+im = Image.open('image.png')
 width,height = im.size
 px = im.load()
 print '[+] Image Loaded'
 
-f = open('macbeth.txt','rb')
-payload = bytearray(f.read())
-print '[+] Payload loaded'
-
 
 max_bytes = max_payload(width,height)/8
-payload_num_bytes = os.path.getsize('macbeth.txt')
+payload_num_bytes = os.path.getsize('payload.txt')
 payload_num_bits = payload_num_bytes*8
+
+print payload_num_bits
+
 if max_bytes < payload_num_bytes:
     print '[-] File too big for the image'
     print '\tMax Payload : ' + str(max_bytes) + ' B\tFile Size: ' + str(payload_num_bytes) +' B'
@@ -63,6 +62,15 @@ else:
     print '[+] File is the right size'
     print '\tMax Payload : ' + str(max_bytes) + ' B\tFile Size: ' + str(payload_num_bytes) +' B'
 
+header = str(payload_num_bytes)+'#!#'
+f = open('payload.txt','rb')
+read = header+f.read()
+payload = bytearray(read)
+print '[+] Payload loaded'
+print '[+] Hide Payload'
+
+
+
 i = 0
 for index in range(0 , len(payload), 3):
     chars = map_tuple(chr_to_bin,map_tuple(chr,(payload[index],payload[index+1],payload[index+2])))
@@ -70,12 +78,15 @@ for index in range(0 , len(payload), 3):
     for imgindex in range(0,4):
         _6bits,_24bitpayload = _24bitpayload[:6],_24bitpayload[6:]
         coor = pixel_coord(i+imgindex, width)
+        print coor
         pixel = px[pixel_coord(i+imgindex,width)]
         new_pixel = modify_pixel(pixel,_6bits)
         px[pixel_coord(i+imgindex,width)] = new_pixel
+        print coor
     i+=4
 
 
 print '[+] Process Completed'
+print '[+] Saving file'
 im.save('steno.png')
 print '[+] File saved'

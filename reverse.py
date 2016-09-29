@@ -29,8 +29,11 @@ for y in range(height):
 result = ''
 print '[+] Converting binary data'
 for x in range(0, len(payload), 8):
-    byte = chr(bin_to_dec(payload[x:x+8]))
-    result+=byte
+    byte = payload[x:x+8]
+    result += chr(int(byte,2))
+
+size = result.split('#!#')[0]
+result=result[(len(size)+3):(int(size)+len(size)+3)]
 
 print '[+] Saving file'
 f=open('result.txt','wb')
