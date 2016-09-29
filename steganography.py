@@ -41,52 +41,82 @@ def modify_pixel(px,_6bits):
     b = b[:-2]+_6bits[4:6]
     return map_tuple(bin_to_dec,(r,g,b))
 
+def hide(image, payload_file, output):
 
-im = Image.open('image.png')
-width,height = im.size
-px = im.load()
-print '[+] Image Loaded'
+    if not os.path.exists(image):
+        print '[-] Image File not Found'
+        return False
+
+    if not os.path.exists(payload_file):
+        print '[-] File not Found'
+        return False
+
+    im = Image.open(image)
+    width,height = im.size
+    px = im.load()
+    print '[+] Image Loaded'
+
+    max_bytes = max_payload(width,height)/8
+    payload_num_bytes = os.path.getsize(payload_file)
+    payload_num_bits = payload_num_bytes*8
+
+    if max_bytes < payload_num_bytes:
+        print '[-] File too big for the image'
+        print '\tMax Payload : ' + str(max_bytes) + ' B\tFile Size: ' + str(payload_num_bytes) +' B'
+        quit()
+    else:
+        print '[+] File is the right size'
+        print '\tMax Payload : ' + str(max_bytes) + ' B\tFile Size: ' + str(payload_num_bytes) +' B'
+
+    header = str(payload_num_bytes)+'#!#'
+    f = open(payload_file,'rb')
+    read = header+f.read()
+    payload = bytearray(read)
+    print '[+] Payload loaded'
+    print '[+] Hide Payload'
+
+    i = 0
+    for index in range(0 , len(payload), 3):
+        chars = map_tuple(chr_to_bin,map_tuple(chr,(payload[index],payload[index+1],payload[index+2])))
+        _24bitpayload = ''.join(x for x in chars )
+        for imgindex in range(0,4):
+            _6bits,_24bitpayload = _24bitpayload[:6],_24bitpayload[6:]
+            coor = pixel_coord(i+imgindex, width)
+            pixel = px[pixel_coord(i+imgindex,width)]
+            new_pixel = modify_pixel(pixel,_6bits)
+            px[pixel_coord(i+imgindex,width)] = new_pixel
+        i+=4
 
 
-max_bytes = max_payload(width,height)/8
-payload_num_bytes = os.path.getsize('payload.txt')
-payload_num_bits = payload_num_bytes*8
+    print '[+] Process Completed'
+    print '[+] Saving file'
+    im.save(output)
+    print '[+] File saved'
 
-print payload_num_bits
+def extract_data(image,output):
+    im = Image.open(image)
+    px = im.load()
+    print '[+] Image Loaded'
+    width, height = im.size
 
-if max_bytes < payload_num_bytes:
-    print '[-] File too big for the image'
-    print '\tMax Payload : ' + str(max_bytes) + ' B\tFile Size: ' + str(payload_num_bytes) +' B'
-    quit()
-else:
-    print '[+] File is the right size'
-    print '\tMax Payload : ' + str(max_bytes) + ' B\tFile Size: ' + str(payload_num_bytes) +' B'
+    payload = ''
+    print '[+] Reading binary data'
+    for y in range(height):
+        for x in range(width):
+            r,g,b = map_tuple(dec_to_bin,px[x,y])
+            payload += str(r[-2:])+str(g[-2:])+str(b[-2:])
 
-header = str(payload_num_bytes)+'#!#'
-f = open('payload.txt','rb')
-read = header+f.read()
-payload = bytearray(read)
-print '[+] Payload loaded'
-print '[+] Hide Payload'
+    result = ''
+    print '[+] Converting binary data'
+    for x in range(0, len(payload), 8):
+        byte = payload[x:x+8]
+        result += chr(int(byte,2))
 
+    size = result.split('#!#')[0]
+    result=result[(len(size)+3):(int(size)+len(size)+3)]
 
-
-i = 0
-for index in range(0 , len(payload), 3):
-    chars = map_tuple(chr_to_bin,map_tuple(chr,(payload[index],payload[index+1],payload[index+2])))
-    _24bitpayload = ''.join(x for x in chars )
-    for imgindex in range(0,4):
-        _6bits,_24bitpayload = _24bitpayload[:6],_24bitpayload[6:]
-        coor = pixel_coord(i+imgindex, width)
-        print coor
-        pixel = px[pixel_coord(i+imgindex,width)]
-        new_pixel = modify_pixel(pixel,_6bits)
-        px[pixel_coord(i+imgindex,width)] = new_pixel
-        print coor
-    i+=4
-
-
-print '[+] Process Completed'
-print '[+] Saving file'
-im.save('steno.png')
-print '[+] File saved'
+    print '[+] Saving file'
+    f=open(output,'wb')
+    f.write(result)
+    f.close()
+    print '[+] File saved'
